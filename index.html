@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Un recuerdo para ti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#f5d58a;--white:#fff}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050509;color:white;font-family:Inter,sans-serif}
+#stage{position:fixed;inset:0;background:radial-gradient(circle at 50% 45%,#19131f 0,#07070c 48%,#020204 100%)}
+.slide{position:absolute;inset:0;opacity:0;transform:scale(1.045);transition:opacity 1.2s ease,transform 7s ease;display:flex;align-items:center;justify-content:center}
+.slide.active{opacity:1;transform:scale(1)}
+.slide img{width:100%;height:100%;object-fit:cover;filter:brightness(.58) saturate(.9)}
+.slide img.photo12{object-position:center 42%}
+.slide:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),transparent 35%,rgba(0,0,0,.72))}
+.overlay{position:absolute;z-index:3;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px}
+.kicker{letter-spacing:.38em;text-transform:uppercase;font-size:11px;color:var(--gold);margin-bottom:18px}
+h1{font-family:"Playfair Display",serif;font-size:clamp(44px,8vw,100px);line-height:.95;margin:0 0 20px;text-shadow:0 5px 30px #000}
+p{max-width:650px;color:#eee;font-size:clamp(15px,2vw,20px);line-height:1.7;margin:0}
+#counter{position:fixed;z-index:5;right:28px;top:25px;font-size:12px;letter-spacing:.18em;color:#ddd}
+#bar{position:fixed;z-index:6;left:0;bottom:0;height:3px;background:var(--gold);width:0}
+.controls{position:fixed;z-index:7;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+button{border:1px solid #ffffff35;background:#ffffff12;color:#fff;border-radius:999px;padding:11px 17px;backdrop-filter:blur(12px);cursor:pointer}
+button:hover{background:#fff;color:#111}
+#sound{position:fixed;z-index:8;left:25px;top:22px}
+.hint{position:fixed;z-index:5;bottom:27px;right:25px;font-size:11px;color:#aaa}
+#intro{position:fixed;z-index:20;inset:0;background:#050509;display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;transition:opacity .9s}
+.card{max-width:620px}.card h2{font-family:"Playfair Display",serif;font-size:clamp(38px,7vw,76px);margin:8px 0 18px}
+.start{margin-top:28px;border:1px solid var(--gold);padding:14px 25px;color:var(--gold);background:transparent}
+.finale{position:fixed;z-index:19;inset:0;background:radial-gradient(circle at 50% 42%,#211a25 0,#08070c 58%,#020204 100%);display:flex;align-items:center;justify-content:center;text-align:center;padding:30px;opacity:0;pointer-events:none;transition:opacity 1.2s}
+.finale.show{opacity:1;pointer-events:auto}
+.finale .card{animation:rise 1.2s ease both}
+.finale h2{font-family:"Playfair Display",serif;font-size:clamp(42px,8vw,88px);line-height:1;margin:8px 0 18px;color:var(--gold)}
+@keyframes rise{from{transform:translateY(22px);opacity:0}to{transform:translateY(0);opacity:1}}
+.dots{position:fixed;z-index:7;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
+.dot{width:5px;height:5px;border-radius:50%;background:#ffffff55}.dot.on{background:var(--gold);width:18px;border-radius:5px}
+@media(max-width:700px){.hint{display:none}.controls{bottom:45px}}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<div class="overlay">
+  <div class="kicker">para una persona especial</div>
+  <h1 id="title">Nuestros recuerdos</h1>
+  <p id="caption">Hay momentos que pasan rápido. Y otros que se quedan para siempre.</p>
+</div>
+
+<div id="intro">
+  <div class="card">
+    <div class="kicker">una pequeña sorpresa</div>
+    <h2>Felicidades </h2>
+    <p>Momento de recordar algunos momentos vividos y otros que aun no se han vivido.</p>
+    <button class="start" id="start">Abrir recuerdo · ▶</button>
+  </div>
+</div>
+
+<div class="finale" id="finale" aria-hidden="true">
+  <div class="card">
+    <div class="kicker">y esto es lo que queda</div>
+    <h2>Gracias por haberte conocido.</h2>
+    <p>Lo mejor de esta historia es que todavía no hemos llegado al final.</p>
+    <button class="start" id="replay">Volver a vivirlo · ↻</button>
+  </div>
+</div>
+
+<button id="sound">🔊 Música</button>
+<div id="counter">01 / 06</div>
+<div class="dots" id="dots"></div>
+<div class="controls"><button id="prev">←</button><button id="pause">Ⅱ</button><button id="next">→</button></div>
+<div class="hint">Las fotos cambian automáticamente</div>
+<div id="bar"></div>
+
+<audio id="music" loop preload="auto">
+  <!-- Coloca aquí tu archivo musical, por ejemplo: wwwroot/music/inner-light.mp3 -->
+  <source src="music/inner-light.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+const photoFiles = [
+  'photos/foto01.jpg', 'photos/foto02.jpg', 'photos/foto03.jpg', 'photos/foto04.jpg',
+  'photos/foto05.jpg', 'photos/foto06.jpg', 'photos/foto07.jpg', 'photos/foto08.jpg',
+  'photos/foto09.jpg', 'photos/foto10.jpg', 'photos/foto11.jpg', 'photos/foto12.jpg',
+  'photos/foto13.jpg', 'photos/foto14.jpg', 'photos/foto15.jpg', 'photos/foto16.jpeg',
+  'photos/foto17.jpg', 'photos/foto18.jpg', 'photos/foto19.jpg', 'photos/foto20.jpg',
+  'photos/foto21.jpg', 'photos/foto22.jpg', 'photos/foto23.jpeg', 'photos/foto24.jpeg',
+  'photos/foto25.jpg', 'photos/foto26.jpg', 'photos/foto27.avif', 'photos/foto28.avif'
+];
+const stage = document.getElementById('stage');
+const dots = document.getElementById('dots');
+const slides = photoFiles.map((src, index) => {
+  const slide = document.createElement('div');
+  slide.className = 'slide' + (index === 0 ? ' active' : '');
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '';
+  if (src === 'photos/foto12.jpg') img.classList.add('photo12');
+  slide.appendChild(img);
+  return slide;
+});
+slides.forEach(slide => stage.appendChild(slide));
+
+const titles = [
+  'Nuestros recuerdos', 'Momentos que guardo', 'Qué suerte coincidir contigo',
+  'Historias que merecen quedarse', 'Más recuerdos por crear', 'Y esto solo es el principio',
+  'Un recuerdo que no se borra', 'La mejor compañía', 'Risas que duran',
+  'Tantos momentos, una sola historia', 'El tiempo pasa, pero queda esto',
+  'Aún hay mucho por vivir', 'Y la mejor parte es compartirlo',
+  'Lo bonito de los recuerdos', 'Días que valen la pena', 'Un instante inolvidable',
+  'Esto merece quedarse', 'Seguimos creando historias', 'Cada foto cuenta una parte',
+  'Lo mejor se vive junto a ti', 'Y cada momemento crea una memoria nueva', 'Noches que nunca se olvidan',
+   'Planetas y Galaxis por descubir', 'Y unas ciudades y una Felicidad por contar', 'Y todavía queda más por descubrir'
+   , 'Y todavía queda más por descubrir', 'Y todavía queda más por descubrir', 'Y todavía queda más por descubrir'  
+];
+const captions = [
+  'Hay momentos que pasan rápido. Y otros que se quedan para siempre.',
+  'Cada foto guarda un día, una risa y una historia.',
+  'Entre tantas personas, qué suerte habernos encontrado.',
+  'Porque al final, son estas pequeñas cosas las que importan.',
+  'Seguro que todavía nos quedan muchísimas aventuras.',
+  'Gracias por formar parte de tantos recuerdos.',
+  'Un instante que merece ser recordado siempre.',
+  'Cuando la gente importa, cada recuerdo pesa más.',
+  'Lo mejor no fue solo el momento, sino compartirlo.',
+  'Pequeños detalles que se vuelven grandes recuerdos.',
+  'La vida se vuelve más bonita cuando hay historias que guardar.',
+  'Cada risa, cada palabra, cada momento, todo cuenta.',
+  'No todo se ve, pero sí se siente cuando lo recuerdas.',
+  'Esto es lo que queda cuando el tiempo pasa.',
+  'A veces la mejor foto es la que guarda la alegría.',
+  'No hace falta mucho para dejar huella.',
+  'Porque los recuerdos más bonitos se comparten.',
+  'Hay personas que hacen que cada día valga la pena.',
+  'Lo más bonito es que esto sigue creciendo.',
+  'Una historia que se disfruta más cuando la compartes.',
+  'Y aún seguimos haciendo memoria.',
+  'Noches que se quedan en la memoria para siempre.',
+  'La fresca fue el principio de muchos planetas y galaxias por descubrir.',
+  'La administración y La felicidad te desea un feliz cumpleaños',
+  'Automatizar un planeta no es algo que se haga en poco tiempo',
+  'Brazil espera, nose cuanto, pero si que se el con quien',
+  '13 años esperando a algo que al final llega, como todo en la vida, pero con la mejor compañía',
+  'Y quien no pide un viaje por Europa con alguien que harias mucho por el'
+];
+
+let i = 0, playing = true, timer, progress;
+slides.forEach((_, n) => {
+  const d = document.createElement('span');
+  d.className = 'dot' + (n === 0 ? ' on' : '');
+  d.onclick = () => go(n);
+  dots.appendChild(d);
+});
+
+function render() {
+  slides.forEach((s, n) => s.classList.toggle('active', n === i));
+  [...dots.children].forEach((d, n) => d.classList.toggle('on', n === i));
+  document.getElementById('counter').textContent = `${String(i + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+  document.getElementById('title').textContent = titles[i] || titles[0];
+  document.getElementById('caption').textContent = captions[i] || captions[0];
+  resetBar();
+}
+
+function go(n) {
+  if (n >= slides.length) {
+    showFinale();
+    return;
+  }
+  i = (n + slides.length) % slides.length;
+  render();
+  if (playing) startTimer();
+}
+
+function showFinale() {
+  playing = false;
+  clearTimeout(timer);
+  clearInterval(progress);
+  document.getElementById('bar').style.width = '100%';
+  document.getElementById('finale').classList.add('show');
+  document.getElementById('finale').setAttribute('aria-hidden', 'false');
+}
+
+function replay() {
+  document.getElementById('finale').classList.remove('show');
+  document.getElementById('finale').setAttribute('aria-hidden', 'true');
+  i = 0;
+  render();
+  playing = true;
+  startTimer();
+}
+
+function resetBar() {
+  clearInterval(progress);
+  document.getElementById('bar').style.width = '0';
+  let t = 0;
+  progress = setInterval(() => {
+    t += 50;
+    document.getElementById('bar').style.width = (t / 7000 * 100) + '%';
+  }, 50);
+}
+
+function startTimer() {
+  clearTimeout(timer);
+  timer = setTimeout(() => go(i + 1), 7000);
+  resetBar();
+}
+
+document.getElementById('next').onclick = () => go(i + 1);
+document.getElementById('prev').onclick = () => go(i - 1);
+document.getElementById('pause').onclick = () => {
+  playing = !playing;
+  document.getElementById('pause').textContent = playing ? 'Ⅱ' : '▶';
+  if (playing) startTimer();
+  else {
+    clearTimeout(timer);
+    clearInterval(progress);
+  }
+};
+document.getElementById('start').onclick = () => {
+  document.getElementById('intro').style.opacity = 0;
+  setTimeout(() => document.getElementById('intro').remove(), 900);
+  document.getElementById('music').play().catch(() => {});
+  playing = true;
+  startTimer();
+};
+document.getElementById('replay').onclick = replay;
+document.getElementById('sound').onclick = () => {
+  const m = document.getElementById('music');
+  if (m.paused) m.play(); else m.pause();
+  document.getElementById('sound').textContent = m.paused ? '🔇 Música' : '🔊 Música';
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') go(i + 1);
+  if (e.key === 'ArrowLeft') go(i - 1);
+  if (e.key === ' ') document.getElementById('pause').click();
+});
+
+render();
+startTimer();
+</script>
+</body>
+</html>
